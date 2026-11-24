@@ -1,0 +1,30 @@
+# Render Blueprint — Dashboard → New → Blueprint → pick this repo.
+# One small Node web service. Data lives in Postgres (Neon free tier recommended) because
+# Render's free instances lose their local disk on every deploy/restart.
+services:
+  - type: web
+    name: fsj-digital
+    runtime: node
+    plan: free # free instances sleep after ~15 min idle; "starter" keeps the site always awake
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL # Neon → Connection string (pooled), includes ?sslmode=require
+        sync: false
+      - key: ADMIN_PASSWORD # password for /admin
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PUBLIC_URL # e.g. https://fsj-digital.onrender.com or your custom domain (used in emails, SEO links)
+        sync: false
+      - key: RESEND_API_KEY # resend.com → API Keys
+        sync: false
+      - key: MAIL_FROM # e.g. "FSJ Digital <hello@yourdomain.com>" (domain verified in Resend)
+        sync: false
+      - key: ADMIN_EMAIL # where new-inquiry notifications go
+        sync: false
