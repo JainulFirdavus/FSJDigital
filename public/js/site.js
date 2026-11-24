@@ -2,6 +2,22 @@
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const themeKey = 'fsjdigital-theme';
+  const setTheme = (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(themeKey, theme); } catch { /* theme still applies for this page */ }
+    $$('[data-theme-toggle]').forEach((button) => {
+      const next = theme === 'dark' ? 'light' : 'dark';
+      button.textContent = `${next === 'dark' ? 'Dark' : 'Light'} mode`;
+      button.setAttribute('aria-label', `Switch to ${next} theme`);
+    });
+  };
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-theme-toggle]')) {
+      setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    }
+  });
   const postJson = async (url, data) => {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     const body = await res.json().catch(() => ({}));

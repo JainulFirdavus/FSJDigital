@@ -64,7 +64,8 @@ On first start the six products are added automatically. After that, change ever
 - **Mail configuration** — set the sender and inquiry notification address here. Keep `RESEND_API_KEY` in the server environment; the admin never stores or displays the API key.
 - **Chatbot configuration** — enable or disable the public rule-based assistant, customize its greeting and fallback reply, and enable or disable lead capture.
 
-The public site and admin always use the light theme, regardless of the visitor's operating-system appearance setting.
+- **Theme** — use the Dark mode / Light mode control in the public site header or admin navigation. Your choice is saved in this browser.
+- **Configuration** — use the admin Configuration menu to open General, Mail, and Chatbot settings separately.
 
 ## Structure
 

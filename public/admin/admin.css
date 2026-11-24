@@ -3,6 +3,10 @@
   --brand: #3b5bdb; --ok: #0f7b55; --warn: #b35c00; --err: #c92a2a; --radius: 14px;
   --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color-scheme: light;
 }
+html[data-theme="dark"] {
+  --bg: #0e1118; --surface: #161a24; --surface-2: #1d2230; --text: #e8ecf3; --muted: #9aa3b5; --line: #283042;
+  --brand: #6d8bff; --ok: #38d9a9; --warn: #ffa94d; --err: #ff8787; color-scheme: dark;
+}
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
 .boot { display: grid; place-items: center; min-height: 100vh; color: var(--muted); }
@@ -44,6 +48,9 @@ label.inline { display: flex; align-items: center; gap: 8px; }
 .side a { display: flex; justify-content: space-between; padding: 9px 12px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 650; }
 .side a.active, .side a:hover { background: var(--surface-2); color: var(--text); }
 .side .bottom { margin-top: auto; display: grid; gap: 4px; }
+.side .bottom button { justify-content: flex-start; }
+.side .config-links { display: grid; gap: 2px; padding-left: 12px; }
+.side .config-links a { font-size: .88rem; padding: 7px 10px; }
 .badge { background: var(--brand); color: #fff; border-radius: 999px; padding: 0 8px; font-size: .78rem; line-height: 1.6; }
 main { padding: 26px; min-width: 0; }
 .page-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }

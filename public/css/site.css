@@ -7,6 +7,12 @@
   --font: 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light;
 }
+html[data-theme="dark"] {
+  --bg: #0d1017; --surface: #151a24; --surface-2: #1b2130; --text: #e8ecf4; --muted: #9ba4b8; --line: #262d3c;
+  --brand: #6d8bff; --brand-2: #9775fa; --ok: #38d9a9; --err: #ff8787;
+  --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25); --shadow-lg: 0 24px 60px rgb(0 0 0 / .45);
+  color-scheme: dark;
+}
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 80px; -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
@@ -27,6 +33,8 @@ p { margin: 0 0 1em; }
 .skip { position: absolute; left: -999px; top: 8px; background: var(--brand); color: #fff; padding: 8px 12px; border-radius: 8px; z-index: 100; }
 .skip:focus { left: 8px; }
 :focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 60%, transparent); outline-offset: 2px; }
+.theme-toggle { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; font: 700 .82rem/1.2 var(--font); cursor: pointer; }
+.theme-toggle:hover { border-color: var(--brand); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: .76rem; font-weight: 700;
   background: color-mix(in srgb, var(--accent, var(--brand)) 13%, var(--surface)); color: color-mix(in srgb, var(--accent, var(--brand)) 80%, var(--text)); }

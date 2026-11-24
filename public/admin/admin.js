@@ -9,6 +9,23 @@
   const CATS = { web: 'Web app', mobile: 'Mobile app', device: 'Smart device' };
   let state = { mail: true, counts: {} };
 
+  const themeKey = 'fsjdigital-theme';
+  const setTheme = (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(themeKey, theme); } catch { /* theme still applies for this page */ }
+    $$('[data-theme-toggle]').forEach((button) => {
+      const next = theme === 'dark' ? 'light' : 'dark';
+      button.textContent = `${next === 'dark' ? 'Dark' : 'Light'} mode`;
+      button.setAttribute('aria-label', `Switch to ${next} theme`);
+    });
+  };
+  setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-theme-toggle]')) {
+      setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    }
+  });
+
   function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -29,10 +46,12 @@
   function renderLogin(msg = '') {
     app.className = '';
     app.innerHTML = `<div class="login"><form class="card">
+      <div class="row"><span class="spacer"></span><button class="theme-toggle btn sm" type="button" data-theme-toggle>Dark mode</button></div>
       <h1>Admin sign in</h1><p class="muted small">Manage products, inquiries and site content.</p>
       <label>Password<input type="password" name="password" autocomplete="current-password" required autofocus></label>
       <p class="err">${e(msg)}</p>
       <button class="btn primary" type="submit">Sign in</button></form></div>`;
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
     $('form').onsubmit = async (ev) => {
       ev.preventDefault();
       try {
@@ -51,11 +70,17 @@
         <div class="logo">⚙️ Admin</div>
         <a href="#inquiries" class="${active === 'inquiries' ? 'active' : ''}">Inquiries ${n ? `<span class="badge">${n}</span>` : ''}</a>
         <a href="#products" class="${active === 'products' ? 'active' : ''}">Products</a>
-        <a href="#settings" class="${active === 'settings' ? 'active' : ''}">Site settings</a>
-        <div class="bottom"><a href="/" target="_blank" rel="noopener">View site ↗</a><a href="#logout">Sign out</a></div>
+        <a href="#configuration/general" class="${active === 'configuration' ? 'active' : ''}">Configuration</a>
+        ${active === 'configuration' ? `<div class="config-links">
+          <a href="#configuration/general" class="${location.hash === '#configuration/general' ? 'active' : ''}">General</a>
+          <a href="#configuration/mail" class="${location.hash === '#configuration/mail' ? 'active' : ''}">Mail</a>
+          <a href="#configuration/chatbot" class="${location.hash === '#configuration/chatbot' ? 'active' : ''}">Chatbot</a>
+        </div>` : ''}
+        <div class="bottom"><button class="theme-toggle btn sm" type="button" data-theme-toggle>Dark mode</button><a href="/" target="_blank" rel="noopener">View site ↗</a><a href="#logout">Sign out</a></div>
       </nav>
       <main>${state.mail ? '' : '<div class="banner"><b>Email is not set up.</b> Replies are saved here but not emailed. Add <code>RESEND_API_KEY</code> to the server environment and configure a sender in Site settings.</div>'}${content}</main>
     </div>`;
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
   }
 
   async function refreshCounts() {
@@ -263,29 +288,33 @@
   }
 
   // ---------- settings ----------
-  async function renderSettings() {
+  async function renderSettings(section = 'general') {
+    if (!['general', 'mail', 'chatbot'].includes(section)) section = 'general';
     const s = await api('/settings');
     state.mail = s.mailConfigured;
     let faq = (s.faq || []).map((x) => ({ ...x }));
     const field = (k, label, hint = '', type = 'input') => `<label>${label}${hint ? ` <span class="hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea name="${k}" rows="3">${e(s[k])}</textarea>` : `<input name="${k}"${type === 'email' ? ' type="email"' : ''} value="${e(s[k])}">`}</label>`;
     const toggle = (k, label, hint = '') => `<label class="inline"><input type="checkbox" name="${k}"${s[k] ? ' checked' : ''}>${label}${hint ? ` <span class="hint">${hint}</span>` : ''}</label>`;
-    shell('settings', `<div class="page-head"><h1>Site settings</h1></div><form id="sf" class="stack">
-      <div class="card stack"><h2>Brand & hero</h2><div class="grid2">${field('siteName', 'Business name')}${field('tagline', 'Tagline', 'small text above the headline')}</div>
+    const general = `<div class="card stack"><h2>Brand & hero</h2><div class="grid2">${field('siteName', 'Business name')}${field('tagline', 'Tagline', 'small text above the headline')}</div>
         ${field('heroTitle', 'Headline')}${field('heroSubtitle', 'Sub-headline', '', 'textarea')}${field('footerNote', 'Footer text')}</div>
       <div class="card stack"><h2>Contact details</h2><div class="grid2">${field('contactEmail', 'Public email', 'shown to visitors', 'email')}${field('phone', 'Phone')}
         ${field('whatsapp', 'WhatsApp number', 'with country code, e.g. 60123456789')}${field('address', 'Address / city')}</div></div>
-      <div class="card stack"><h2>Mail configuration</h2>
+      <div class="card stack"><h2>Messages</h2>${field('ackMessage', 'Auto-reply email', 'sent to every new inquiry', 'textarea')}</div>
+      <div class="card stack"><div class="section-title"><h2 style="margin:0">FAQ</h2><button type="button" class="btn sm" id="addFaq">+ Add question</button></div><div class="stack" id="faq"></div></div>`;
+    const mail = `<div class="card stack"><h2>Mail delivery</h2>
         <p class="muted small" style="margin:0">${s.mailConfigured ? 'Mail is ready to send.' : 'Mail is not ready to send.'} Resend API key: ${s.mailApiKeyConfigured ? 'configured on server' : 'missing from server environment'}.</p>
         <div class="grid2">${field('mailFrom', 'Sender name and email', 'e.g. FSJ Digital <hello@example.com>')}${field('notificationEmail', 'Inquiry notification email', 'receives new inquiry alerts', 'email')}</div>
-        <p class="hint" style="margin:0">Keep <code>RESEND_API_KEY</code> in the server environment; it is never stored in the database.</p></div>
-      <div class="card stack"><h2>Messages</h2>${field('ackMessage', 'Auto-reply email', 'sent to every new inquiry', 'textarea')}</div>
-      <div class="card stack"><h2>Chatbot configuration</h2>${toggle('chatEnabled', 'Enable the public chatbot')}
+        <p class="hint" style="margin:0">Keep <code>RESEND_API_KEY</code> in the server environment; it is never stored in the database.</p></div>`;
+    const chatbot = `<div class="card stack"><h2>Chat assistant</h2>${toggle('chatEnabled', 'Enable the public chatbot')}
         ${field('chatGreeting', 'Chat greeting', 'shown when a visitor opens chat', 'textarea')}
         ${field('chatFallback', 'Fallback response', 'used when the bot cannot answer or lead capture is disabled', 'textarea')}
-        ${toggle('chatCollectLeads', 'Allow the chatbot to collect lead details', 'otherwise visitors are sent to the contact form')}</div>
-      <div class="card stack"><div class="section-title"><h2 style="margin:0">FAQ</h2><button type="button" class="btn sm" id="addFaq">+ Add question</button></div><div class="stack" id="faq"></div></div>
-      <div class="sticky-actions"><button class="btn primary" type="submit">Save settings</button></div></form>`);
+        ${toggle('chatCollectLeads', 'Allow the chatbot to collect lead details', 'otherwise visitors are sent to the contact form')}</div>`;
+    const content = { general, mail, chatbot }[section] || general;
+    const title = { general: 'General configuration', mail: 'Mail configuration', chatbot: 'Chatbot configuration' }[section] || 'General configuration';
+    shell('configuration', `<div class="page-head"><h1>${title}</h1></div><form id="sf" class="stack">${content}
+      <div class="sticky-actions"><button class="btn primary" type="submit">Save configuration</button></div></form>`);
     const drawFaq = () => {
+      if (!$('#faq')) return;
       $('#faq').innerHTML = faq.map((x, i) => `<div class="faq-row" data-i="${i}"><input data-k="q" value="${e(x.q)}" placeholder="Question"><textarea data-k="a" rows="2" placeholder="Answer">${e(x.a)}</textarea><button type="button" class="btn sm danger" aria-label="Remove">✕</button></div>`).join('') || '<p class="muted">No questions.</p>';
       $$('.faq-row').forEach((row) => {
         const i = Number(row.dataset.i);
@@ -293,16 +322,20 @@
         $('button', row).onclick = () => { faq.splice(i, 1); drawFaq(); };
       });
     };
-    drawFaq();
-    $('#addFaq').onclick = () => { faq.push({ q: '', a: '' }); drawFaq(); };
+    if (section === 'general') {
+      drawFaq();
+      $('#addFaq').onclick = () => { faq.push({ q: '', a: '' }); drawFaq(); };
+    }
     $('#sf').onsubmit = async (ev) => {
       ev.preventDefault();
       const f = ev.target;
       const body = Object.fromEntries(new FormData(f));
-      body.chatEnabled = f.chatEnabled.checked;
-      body.chatCollectLeads = f.chatCollectLeads.checked;
-      body.faq = faq;
-      try { await api('/settings', { method: 'PUT', body }); toast('Settings saved ✓'); await renderSettings(); } catch (err) { toast(err.message); }
+      if (section === 'chatbot') {
+        body.chatEnabled = f.chatEnabled.checked;
+        body.chatCollectLeads = f.chatCollectLeads.checked;
+      }
+      if (section === 'general') body.faq = faq;
+      try { await api('/settings', { method: 'PUT', body }); toast('Configuration saved ✓'); await renderSettings(section); } catch (err) { toast(err.message); }
     };
   }
 
@@ -318,7 +351,8 @@
       if (h.startsWith('inquiry/')) return await renderInquiry(h.split('/')[1]);
       if (h === 'products') return await renderProducts();
       if (h.startsWith('product/')) return await renderProduct(h.split('/')[1]);
-      if (h === 'settings') return await renderSettings();
+      if (h === 'settings') { location.hash = 'configuration/general'; return; }
+      if (h.startsWith('configuration/')) return await renderSettings(h.split('/')[1]);
       location.hash = 'inquiries';
     } catch (err) { if (err.message !== 'Please sign in.') toast(err.message); }
   }

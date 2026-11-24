@@ -32,7 +32,7 @@ function header(site, active = '') {
     <a href="/#faq">FAQ</a>
     <a href="/#contact">Contact</a>
   </nav>
-  <a class="btn btn-primary btn-sm" href="/#contact">Book a demo</a>
+  <div class="row"><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark theme">Dark mode</button><a class="btn btn-primary btn-sm" href="/#contact">Book a demo</a></div>
 </div></header>`;
 }
 
@@ -95,6 +95,7 @@ function layout({ site, base, path, title, description, image, body, jsonld, pro
 <meta property="og:title" content="${esc(fullTitle)}"><meta property="og:description" content="${esc(description || site.heroSubtitle)}">
 <meta property="og:url" content="${esc(base + path)}">${image ? `<meta property="og:image" content="${esc(abs(base, image))}"><meta name="twitter:card" content="summary_large_image">` : ''}
 <meta name="theme-color" content="#3b5bdb">
+<script>try { document.documentElement.dataset.theme = localStorage.getItem('fsjdigital-theme') || 'light'; } catch { document.documentElement.dataset.theme = 'light'; }</script>
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
