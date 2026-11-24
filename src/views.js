@@ -51,7 +51,7 @@ function footer(site, products) {
 </div><div class="wrap footer-base muted">© ${new Date().getFullYear()} ${esc(site.siteName)}</div></footer>`;
 }
 
-const chatWidget = (site) => `<div class="chat" data-chat data-greeting="${esc(site.chatGreeting)}">
+const chatWidget = (site) => site.chatEnabled === false ? '' : `<div class="chat" data-chat data-greeting="${esc(site.chatGreeting)}">
   <button class="chat-toggle" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open chat">${icons.chat}</button>
   <section class="chat-panel" id="chat-panel" hidden aria-label="Chat with us">
     <header class="chat-head"><div><b>${esc(site.siteName)}</b><small>Usually replies by email</small></div><button type="button" class="chat-close" aria-label="Close chat">×</button></header>
@@ -164,7 +164,7 @@ export function homePage({ site, products, base }) {
 <section class="section section-alt" id="how"><div class="wrap">
   <div class="section-head"><div><p class="eyebrow">How it works</p><h2>From demo to launch in three steps</h2></div></div>
   <ol class="steps">
-    <li class="card"><span class="step-n">1</span><h3>Try the demo</h3><p class="muted">Click through each product's demo and pick what fits. Ask the chat or book a call any time.</p></li>
+    <li class="card"><span class="step-n">1</span><h3>Try the demo</h3><p class="muted">Click through each product's demo and pick what fits. ${site.chatEnabled === false ? 'Contact us' : 'Ask the chat or book a call'} any time.</p></li>
     <li class="card"><span class="step-n">2</span><h3>We brand & set up</h3><p class="muted">Your name, logo, colours and domain. We configure hosting, email and data for you.</p></li>
     <li class="card"><span class="step-n">3</span><h3>Launch & grow</h3><p class="muted">We train your team, keep the app updated and add the features you need next.</p></li>
   </ol>
@@ -186,7 +186,7 @@ ${faq.length ? `<section class="section" id="faq"><div class="wrap narrow">
       ${site.contactEmail ? `<li><span>Email</span><a href="mailto:${esc(site.contactEmail)}">${esc(site.contactEmail)}</a></li>` : ''}
       ${site.phone ? `<li><span>Phone</span><a href="tel:${esc(site.phone.replace(/[^\d+]/g, ''))}">${esc(site.phone)}</a></li>` : ''}
       ${site.whatsapp ? `<li><span>WhatsApp</span><a href="https://wa.me/${esc(site.whatsapp.replace(/\D/g, ''))}" rel="noopener">Chat on WhatsApp</a></li>` : ''}
-      <li><span>Chat</span><button type="button" class="link" data-open-chat>Open the chat assistant</button></li>
+      ${site.chatEnabled === false ? '' : '<li><span>Chat</span><button type="button" class="link" data-open-chat>Open the chat assistant</button></li>'}
     </ul>
   </div>
   ${contactForm(products)}

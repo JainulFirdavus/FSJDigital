@@ -7,7 +7,7 @@ PayTrack, Desk Buddy) with:
 - **Product pages** with features, screenshots, overview, SEO tags (Open Graph, JSON-LD, sitemap)
 - **Demo page for every product** — live embedded app (MenuLister), screen tour (all), optional video
 - **Chat assistant** that answers from your product data and turns chats into leads
-- **Admin panel** at `/admin` — read inquiries, reply by email, edit products/images/videos/prices, site settings
+- **Admin panel** at `/admin` — read inquiries, reply by email, edit products/images/videos/prices, mail and chatbot settings
 - **Emails** — auto-reply to the customer, notification to you, and your replies from the admin
 
 No front-end framework and no build step. One Node process, one dependency (`pg`, used only with Postgres).
@@ -60,7 +60,11 @@ On first start the six products are added automatically. After that, change ever
   - **Demo**: *Screens tour* uses the images; *Live app* embeds a URL (used for MenuLister).
   - **Video**: paste a YouTube (unlisted works), Vimeo, Google Drive or direct `.mp4` link — it appears on the demo page.
     Upload videos to YouTube rather than to this site; it keeps the app light and plays better on phones.
-- **Site settings** — business name, headline, contact details, WhatsApp, auto-reply email text, chat greeting, FAQ.
+- **Site settings** — business name, headline, contact details, WhatsApp, auto-reply email text, FAQ, sender and notification email addresses.
+- **Mail configuration** — set the sender and inquiry notification address here. Keep `RESEND_API_KEY` in the server environment; the admin never stores or displays the API key.
+- **Chatbot configuration** — enable or disable the public rule-based assistant, customize its greeting and fallback reply, and enable or disable lead capture.
+
+The public site and admin always use the light theme, regardless of the visitor's operating-system appearance setting.
 
 ## Structure
 

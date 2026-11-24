@@ -60,5 +60,15 @@ export function chatReply(message, products, site) {
     return { reply: faq ? faq.a : 'We handle setup, hosting and updates for you.', chips: ['Talk to the team', 'Pricing'] };
   }
   if (has(t, ['thanks', 'thank you', 'ok', 'okay', 'great', 'cool'])) return { reply: 'You are welcome! Anything else I can help with?', chips: ['Pricing', 'Demos', 'Talk to the team'] };
-  return { reply: "I'm not sure I got that. I can tell you about a product, show demos, or pass your question to the team.", chips: [...chips.slice(0, 4), 'Talk to the team'] };
+  return { reply: site.chatFallback || "I'm not sure I got that. I can tell you about a product, show demos, or pass your question to the team.", chips: [...chips.slice(0, 4), 'Talk to the team'] };
+}
+
+export function applyChatSettings(reply, site) {
+  if (site.chatCollectLeads !== false || !reply.lead) return reply;
+  return {
+    ...reply,
+    reply: site.chatFallback || reply.reply,
+    lead: false,
+    links: [...(reply.links || []), { label: 'Contact our team', href: '/#contact' }],
+  };
 }

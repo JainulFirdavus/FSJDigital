@@ -2,10 +2,11 @@
 // Without RESEND_API_KEY, emails are logged to the console instead of sent.
 import { esc } from './util.js';
 
-export const mailConfigured = () => Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM);
+export const mailConfigured = (from = process.env.MAIL_FROM) => Boolean(process.env.RESEND_API_KEY && from);
 
-export async function sendMail({ to, subject, html, text, replyTo }) {
-  if (!mailConfigured()) {
+export async function sendMail({ to, subject, html, text, replyTo, from }) {
+  const sender = from || process.env.MAIL_FROM;
+  if (!mailConfigured(sender)) {
     console.log(`[mail] not configured — would send to ${to}: ${subject}`);
     return 'not_configured';
   }
@@ -13,7 +14,7 @@ export async function sendMail({ to, subject, html, text, replyTo }) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from: sender, to: [to], subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
       signal: AbortSignal.timeout(15_000),
     });
     if (res.ok) return 'sent';
