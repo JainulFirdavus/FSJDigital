@@ -156,7 +156,6 @@
     text = String(text).trim();
     if (!text) return;
     bubble(text, 'me');
-    if (/^talk to the team$/i.test(text)) { bubble('Sure — leave your details and we will reply by email.', 'bot'); leadForm(lastProduct); return; }
     const typing = document.createElement('div');
     typing.className = 'msg bot';
     typing.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';

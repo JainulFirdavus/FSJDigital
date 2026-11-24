@@ -54,7 +54,7 @@
         <a href="#settings" class="${active === 'settings' ? 'active' : ''}">Site settings</a>
         <div class="bottom"><a href="/" target="_blank" rel="noopener">View site ↗</a><a href="#logout">Sign out</a></div>
       </nav>
-      <main>${state.mail ? '' : '<div class="banner"><b>Email is not set up.</b> Replies are saved here but not emailed. Add <code>RESEND_API_KEY</code>, <code>MAIL_FROM</code> and <code>ADMIN_EMAIL</code> on the server.</div>'}${content}</main>
+      <main>${state.mail ? '' : '<div class="banner"><b>Email is not set up.</b> Replies are saved here but not emailed. Add <code>RESEND_API_KEY</code> to the server environment and configure a sender in Site settings.</div>'}${content}</main>
     </div>`;
   }
 
@@ -265,14 +265,24 @@
   // ---------- settings ----------
   async function renderSettings() {
     const s = await api('/settings');
+    state.mail = s.mailConfigured;
     let faq = (s.faq || []).map((x) => ({ ...x }));
-    const field = (k, label, hint = '', type = 'input') => `<label>${label}${hint ? ` <span class="hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea name="${k}" rows="3">${e(s[k])}</textarea>` : `<input name="${k}" value="${e(s[k])}">`}</label>`;
+    const field = (k, label, hint = '', type = 'input') => `<label>${label}${hint ? ` <span class="hint">${hint}</span>` : ''}${type === 'textarea' ? `<textarea name="${k}" rows="3">${e(s[k])}</textarea>` : `<input name="${k}"${type === 'email' ? ' type="email"' : ''} value="${e(s[k])}">`}</label>`;
+    const toggle = (k, label, hint = '') => `<label class="inline"><input type="checkbox" name="${k}"${s[k] ? ' checked' : ''}>${label}${hint ? ` <span class="hint">${hint}</span>` : ''}</label>`;
     shell('settings', `<div class="page-head"><h1>Site settings</h1></div><form id="sf" class="stack">
       <div class="card stack"><h2>Brand & hero</h2><div class="grid2">${field('siteName', 'Business name')}${field('tagline', 'Tagline', 'small text above the headline')}</div>
         ${field('heroTitle', 'Headline')}${field('heroSubtitle', 'Sub-headline', '', 'textarea')}${field('footerNote', 'Footer text')}</div>
-      <div class="card stack"><h2>Contact details</h2><div class="grid2">${field('contactEmail', 'Public email', 'also receives inquiries if ADMIN_EMAIL is not set')}${field('phone', 'Phone')}
+      <div class="card stack"><h2>Contact details</h2><div class="grid2">${field('contactEmail', 'Public email', 'shown to visitors', 'email')}${field('phone', 'Phone')}
         ${field('whatsapp', 'WhatsApp number', 'with country code, e.g. 60123456789')}${field('address', 'Address / city')}</div></div>
-      <div class="card stack"><h2>Messages</h2>${field('ackMessage', 'Auto-reply email', 'sent to every new inquiry', 'textarea')}${field('chatGreeting', 'Chat greeting', '', 'textarea')}</div>
+      <div class="card stack"><h2>Mail configuration</h2>
+        <p class="muted small" style="margin:0">${s.mailConfigured ? 'Mail is ready to send.' : 'Mail is not ready to send.'} Resend API key: ${s.mailApiKeyConfigured ? 'configured on server' : 'missing from server environment'}.</p>
+        <div class="grid2">${field('mailFrom', 'Sender name and email', 'e.g. FSJ Digital <hello@example.com>')}${field('notificationEmail', 'Inquiry notification email', 'receives new inquiry alerts', 'email')}</div>
+        <p class="hint" style="margin:0">Keep <code>RESEND_API_KEY</code> in the server environment; it is never stored in the database.</p></div>
+      <div class="card stack"><h2>Messages</h2>${field('ackMessage', 'Auto-reply email', 'sent to every new inquiry', 'textarea')}</div>
+      <div class="card stack"><h2>Chatbot configuration</h2>${toggle('chatEnabled', 'Enable the public chatbot')}
+        ${field('chatGreeting', 'Chat greeting', 'shown when a visitor opens chat', 'textarea')}
+        ${field('chatFallback', 'Fallback response', 'used when the bot cannot answer or lead capture is disabled', 'textarea')}
+        ${toggle('chatCollectLeads', 'Allow the chatbot to collect lead details', 'otherwise visitors are sent to the contact form')}</div>
       <div class="card stack"><div class="section-title"><h2 style="margin:0">FAQ</h2><button type="button" class="btn sm" id="addFaq">+ Add question</button></div><div class="stack" id="faq"></div></div>
       <div class="sticky-actions"><button class="btn primary" type="submit">Save settings</button></div></form>`);
     const drawFaq = () => {
@@ -287,9 +297,12 @@
     $('#addFaq').onclick = () => { faq.push({ q: '', a: '' }); drawFaq(); };
     $('#sf').onsubmit = async (ev) => {
       ev.preventDefault();
-      const body = Object.fromEntries(new FormData(ev.target));
+      const f = ev.target;
+      const body = Object.fromEntries(new FormData(f));
+      body.chatEnabled = f.chatEnabled.checked;
+      body.chatCollectLeads = f.chatCollectLeads.checked;
       body.faq = faq;
-      try { await api('/settings', { method: 'PUT', body }); toast('Settings saved ✓'); } catch (err) { toast(err.message); }
+      try { await api('/settings', { method: 'PUT', body }); toast('Settings saved ✓'); await renderSettings(); } catch (err) { toast(err.message); }
     };
   }
 

@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS = {
   heroSubtitle:
     'Pick a proven web or mobile product, we put your brand on it, set it up and support it. Try every demo before you buy.',
   contactEmail: '',
+  mailFrom: '',
+  notificationEmail: '',
   phone: '',
   whatsapp: '',
   address: '',
@@ -18,6 +20,9 @@ export const DEFAULT_SETTINGS = {
   ackMessage:
     'Thanks for reaching out! We have received your message and will reply by email shortly. If it is urgent, reply to this email.',
   chatGreeting: "Hi! 👋 I can tell you about our products, show demos or connect you with the team. What are you looking for?",
+  chatEnabled: true,
+  chatCollectLeads: true,
+  chatFallback: "I'm not sure I got that. I can tell you about a product, show demos, or pass your question to the team.",
   faq: [
     { q: 'Can the app carry my own brand?', a: 'Yes. We set your name, logo, colours and domain before launch.' },
     { q: 'Do you handle hosting and setup?', a: 'Yes. We can deploy on your own cloud account or host it for you, including domain, SSL and email.' },

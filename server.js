@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { initDb } from './src/db.js';
 import * as store from './src/store.js';
 import { homePage, productPage, demoPage, notFoundPage } from './src/views.js';
-import { chatReply } from './src/chat.js';
+import { chatReply, applyChatSettings } from './src/chat.js';
 import { sendMail, ackEmail, adminNoticeEmail, replyEmail, mailConfigured } from './src/mail.js';
 import { checkPassword, sessionCookie, clearCookie, isAdmin, adminConfigured } from './src/auth.js';
 import { isEmail, rateLimiter } from './src/util.js';
@@ -105,9 +105,10 @@ async function handleInquiry(req, res) {
   // Emails go out after responding, so the visitor never waits on the mail provider.
   const site = await store.getSettings();
   const ack = ackEmail(site, saved);
-  const adminTo = process.env.ADMIN_EMAIL || site.contactEmail;
-  await sendMail({ to: saved.email, ...ack, replyTo: adminTo || undefined });
-  if (adminTo) await sendMail({ to: adminTo, ...adminNoticeEmail(site, saved, `${baseUrl(req)}/admin#inquiry/${saved.id}`), replyTo: saved.email });
+  const adminTo = site.notificationEmail || process.env.ADMIN_EMAIL || site.contactEmail;
+  const from = site.mailFrom || process.env.MAIL_FROM;
+  await sendMail({ to: saved.email, ...ack, replyTo: adminTo || undefined, from });
+  if (adminTo) await sendMail({ to: adminTo, ...adminNoticeEmail(site, saved, `${baseUrl(req)}/admin#inquiry/${saved.id}`), replyTo: saved.email, from });
 }
 
 // ---------- admin API ----------
@@ -123,11 +124,17 @@ async function handleAdmin(req, res, url) {
     return json(req, res, 200, { ok: true }, { 'Set-Cookie': sessionCookie() });
   }
   if (p === '/logout' && m === 'POST') return json(req, res, 200, { ok: true }, { 'Set-Cookie': clearCookie() });
-  if (p === '/session' && m === 'GET') return json(req, res, 200, { authenticated: isAdmin(req), mail: mailConfigured() });
+  if (p === '/session' && m === 'GET') {
+    const site = await store.getSettings();
+    return json(req, res, 200, { authenticated: isAdmin(req), mail: mailConfigured(site.mailFrom || process.env.MAIL_FROM) });
+  }
 
   requireAdmin(req);
 
-  if (p === '/overview' && m === 'GET') return json(req, res, 200, { counts: await store.inquiryCounts(), mail: mailConfigured() });
+  if (p === '/overview' && m === 'GET') {
+    const site = await store.getSettings();
+    return json(req, res, 200, { counts: await store.inquiryCounts(), mail: mailConfigured(site.mailFrom || process.env.MAIL_FROM) });
+  }
 
   // products
   if (p === '/products' && m === 'GET') return json(req, res, 200, await store.listProducts({ includeHidden: true }));
@@ -147,12 +154,33 @@ async function handleAdmin(req, res, url) {
   }
 
   // settings
-  if (p === '/settings' && m === 'GET') return json(req, res, 200, await store.getSettings());
+  if (p === '/settings' && m === 'GET') {
+    const site = await store.getSettings();
+    const mailFrom = site.mailFrom || process.env.MAIL_FROM || '';
+    return json(req, res, 200, {
+      ...site,
+      mailFrom,
+      notificationEmail: site.notificationEmail || process.env.ADMIN_EMAIL || '',
+      mailConfigured: mailConfigured(mailFrom),
+      mailApiKeyConfigured: Boolean(process.env.RESEND_API_KEY),
+    });
+  }
   if (p === '/settings' && m === 'PUT') {
     const b = await readJson(req, 50_000);
-    const keys = ['siteName', 'tagline', 'heroTitle', 'heroSubtitle', 'contactEmail', 'phone', 'whatsapp', 'address', 'ackMessage', 'chatGreeting', 'footerNote'];
-    const patch = Object.fromEntries(keys.filter((k) => k in b).map((k) => [k, str(b[k], 1000)]));
+    const keys = ['siteName', 'tagline', 'heroTitle', 'heroSubtitle', 'contactEmail', 'mailFrom', 'notificationEmail', 'phone', 'whatsapp', 'address', 'ackMessage', 'chatGreeting', 'chatFallback', 'footerNote'];
+    const patch = Object.fromEntries(keys.filter((k) => k in b).map((k) => [k, str(b[k], k === 'mailFrom' ? 250 : 1000)]));
     if (patch.siteName === '') delete patch.siteName;
+    if (patch.notificationEmail && !isEmail(patch.notificationEmail)) throw new HttpError(400, 'Please enter a valid notification email address.');
+    if (patch.mailFrom) {
+      const fromAddress = patch.mailFrom.match(/<([^<>]+)>$/)?.[1] || patch.mailFrom;
+      if (!isEmail(fromAddress)) throw new HttpError(400, 'Enter a valid sender email, optionally formatted as Name <email>.');
+    }
+    for (const key of ['chatEnabled', 'chatCollectLeads']) {
+      if (key in b) {
+        if (typeof b[key] !== 'boolean') throw new HttpError(400, `The ${key} setting must be true or false.`);
+        patch[key] = b[key];
+      }
+    }
     if (Array.isArray(b.faq)) patch.faq = b.faq.map((x) => ({ q: str(x.q, 200), a: str(x.a, 1000) })).filter((x) => x.q && x.a).slice(0, 30);
     return json(req, res, 200, await store.saveSettings(patch));
   }
@@ -182,7 +210,12 @@ async function handleAdmin(req, res, url) {
     let emailStatus = 'note';
     if (b.sendEmail !== false) {
       const site = await store.getSettings();
-      emailStatus = await sendMail({ to: inq.email, ...replyEmail(site, inq, body), replyTo: process.env.ADMIN_EMAIL || site.contactEmail || undefined });
+      emailStatus = await sendMail({
+        to: inq.email,
+        ...replyEmail(site, inq, body),
+        replyTo: site.notificationEmail || process.env.ADMIN_EMAIL || site.contactEmail || undefined,
+        from: site.mailFrom || process.env.MAIL_FROM,
+      });
     }
     await store.addMessage(inq.id, 'out', body, emailStatus);
     if (b.sendEmail !== false) await store.setInquiryStatus(inq.id, 'replied');
@@ -205,7 +238,8 @@ async function route(req, res) {
     if (!limitChat(clientIp(req))) throw new HttpError(429, 'Slow down a little 🙂');
     const b = await readJson(req, 4_000);
     const [products, site] = await Promise.all([store.listProducts(), store.getSettings()]);
-    return json(req, res, 200, chatReply(str(b.message, 500), products, site));
+    if (site.chatEnabled === false) throw new HttpError(404, 'Chat is currently unavailable.');
+    return json(req, res, 200, applyChatSettings(chatReply(str(b.message, 500), products, site), site));
   }
   if (p.startsWith('/api/')) throw new HttpError(404, 'Not found.');
 
@@ -255,8 +289,9 @@ const server = http.createServer(async (req, res) => {
 
 const kind = await initDb();
 const seeded = await store.seedIfEmpty();
+const site = await store.getSettings();
 server.listen(PORT, () => {
-  console.log(`FSJ Digital running on http://localhost:${PORT}  (db: ${kind}${seeded ? ', seeded products' : ''}, mail: ${mailConfigured() ? 'Resend' : 'console only'})`);
+  console.log(`FSJ Digital running on http://localhost:${PORT}  (db: ${kind}${seeded ? ', seeded products' : ''}, mail: ${mailConfigured(site.mailFrom || process.env.MAIL_FROM) ? 'Resend' : 'console only'})`);
   if (!adminConfigured()) console.warn('ADMIN_PASSWORD is not set — the admin panel is disabled.');
   else if (!process.env.ADMIN_PASSWORD) console.warn('Admin password is "admin" for local development. Set ADMIN_PASSWORD before deploying.');
 });
